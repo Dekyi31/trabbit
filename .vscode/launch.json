@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-HabitsApplication<habits>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.trabbitproject.habits.HabitsApplication",
+            "projectName": "habits",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}
