@@ -1,5 +1,4 @@
 package com.trabbitproject.habits.user;
-
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -14,6 +13,7 @@ import java.time.LocalDateTime;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,27 +38,28 @@ public class UserController {
     }
 
     @GetMapping("/{username}/tasks")
-public Flux<Task> getUserTasks(@PathVariable String username, @AuthenticationPrincipal UserDetails userDetails) {
-    if (!username.equals(userDetails.getUsername())) {
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied");
+    public Flux<Task> getUserTasks(@PathVariable String username, @AuthenticationPrincipal UserDetails userDetails) {
+        if (!username.equals(userDetails.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied");
+        }
+        return userService.getUserByUsername(username)
+            .flatMapMany(user -> taskService.getAllUserTasks(user.getUserId()));
     }
-    return userService.getUserByUsername(username)
-        .flatMapMany(user -> taskService.getAllUserTasks(user.getUserId()));
-}
-
-@PostMapping("/{username}/create")
-public Mono<Task> createTask(@RequestParam String description, @RequestParam LocalDateTime date, @RequestParam LocalDateTime dueDate, @RequestParam boolean completed, @PathVariable String username, @AuthenticationPrincipal UserDetails userDetails) {
-    if (!username.equals(userDetails.getUsername())) {
-        throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied");
+    
+    @PostMapping("/{username}/create")
+    public Mono<Task> createTask(@RequestParam String description, @RequestParam LocalDateTime date, @RequestParam LocalDateTime dueDate, @RequestParam boolean completed, @PathVariable String username, @AuthenticationPrincipal UserDetails userDetails) {
+        if (!username.equals(userDetails.getUsername())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access Denied");
+        }
+        return userService.getUserByUsername(username)
+            .flatMap(user -> taskService.createTask(description, date, dueDate, user.getUserId())
+                .collectList()
+                .flatMap(tasks -> Mono.justOrEmpty(tasks.stream().findFirst())));
     }
-    return userService.getUserByUsername(username)
-        .flatMap(user -> taskService.createTask(description, date, dueDate, user.getUserId())
-            .collectList()
-            .flatMap(tasks -> Mono.justOrEmpty(tasks.stream().findFirst())));
-}
 
-@PutMapping("/update/{id}")
-public Mono<User> updateUser(@PathVariable ObjectId id, @RequestParam String attribute, @RequestParam String value) {
-    return userService.updateUserAttribute(id, attribute, value);
-}
+    @PutMapping("/update/{id}")
+    @PreAuthorize("#username == authentication.principal.username")
+    public Mono<User> updateUser(@PathVariable ObjectId id, @RequestParam String attribute, @RequestParam String value) {
+        return userService.updateUserAttribute(id, attribute, value);
+    }
 }

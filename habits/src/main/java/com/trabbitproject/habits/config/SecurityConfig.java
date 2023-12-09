@@ -55,7 +55,7 @@ public SecurityWebFilterChain springSecurityFilterChain(ServerHttpSecurity http)
         JWTAuthenticationFilter jwtAuthenticationFilter = jwtAuthenticationFilter(userDetailsService);
         http
                 .authorizeExchange(exchange -> exchange
-                        .pathMatchers("/api/auth/**").permitAll()
+                        .pathMatchers("/api/auth/**", "/**").permitAll()
                         .anyExchange().authenticated())
                 .csrf(csrf -> csrf.disable()
                         .exceptionHandling(handling -> handling.authenticationEntryPoint(jwtAuthenticationEntryPoint))

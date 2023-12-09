@@ -27,29 +27,32 @@ public class JWTAuthenticationFilter implements WebFilter {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-      final String authorizationHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
-  
-      String username = null;
-      String jwt = null;
-  
-      if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
-          jwt = authorizationHeader.substring(7);
-          username = JWTService.extractUsername(jwt);
-      }
-  
-      if (username != null) {
-          UserDetails userDetails = userDetailsService.findByUsername(username).block();
-  
-          if (JWTService.isTokenValid(jwt, userDetails)) {
-              UsernamePasswordAuthenticationToken authenticationToken =
-                      new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-  
-              return ReactiveSecurityContextHolder.getContext()
-                      .doOnSuccess(context -> context.setAuthentication(authenticationToken))
-                      .then(chain.filter(exchange));
-          }
-      }
-  
+    final String authorizationHeader = exchange.getRequest().getHeaders().getFirst("Authorization");
+
+    String username = null;
+    String jwt = null;
+
+    if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+        jwt = authorizationHeader.substring(7);
+        try {
+            username = JWTService.extractUsername(jwt);
+        } catch (Exception e) {
+            return chain.filter(exchange);
+        }
+    }
+
+    if (username != null) {
+        UserDetails userDetails = userDetailsService.findByUsername(username).block();
+
+        if (JWTService.isTokenValid(jwt, userDetails)) {
+            UsernamePasswordAuthenticationToken authenticationToken =
+                    new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
+            return ReactiveSecurityContextHolder.getContext()
+                    .doOnSuccess(context -> context.setAuthentication(authenticationToken))
+                    .then(chain.filter(exchange));
+        }
+    }
 
     return chain.filter(exchange);
 }
